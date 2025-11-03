@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section>
+  <article>
+    <h1>Book a Table</h1>
+    <!--Begin row-->
+    <div class="row">
+      <!--Begin col-->
+      <div class="column">
+        <!-- Part 1 -->
+        <form id="form">
+          {% csrf_token %}
+          <p>
+            <label for="first_name">First name:</label>
+            <input type="text" id="first_name" name="first_name" required />
+          </p>
+          <p>
+            <label for="reservation_date">Reservation date:</label>
+            <input type="date" id="reservation_date" name="reservation_date" required />
+          </p>
+          <p>
+            <label for="reservation_slot">Reservation time:</label>
+            <select id="reservation_slot" name="reservation_slot"></select>
+          </p>
+          <input type="submit" id="button" value="Book now" />
+        </form>
+        <pre id="bookings"></pre>
+      </div>
+      <!--End col-->
+
+      <!--Begin col-->
+      <div class="column">
+        <div class="videowrap">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d11898.289517452584!2d-87.60853049433447!3d41.79442860243028!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x880e2912ce6f7027%3A0xc0cfb5545d4a37b2!2sHyde%20Park%2C%20Chicago%2C%20IL%2C%20USA!5e0!3m2!1sen!2spt!4v1662384760663!5m2!1sen!2spt"
+            width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+      <!--End col-->
+    </div>
+    <!--End row-->
+  </article>
+</section>
+
+<!-- Add your code inside the script tags below  -->
+<script>
+  const bookingsEl = document.getElementById("bookings");
+  const dateInput = document.getElementById("reservation_date");
+  const slotSelect = document.getElementById("reservation_slot");
+
+  // Format time for display (Step 11 helper)
+  function formatTime(slot) {
+    const hour = parseInt(slot);
+    return `${hour}:00 - ${hour + 1}:00`;
+  }
+
+  // Fetch bookings for selected date (Step 10)
+  async function getBookings() {
+    const date = dateInput.value;
+    const response = await fetch(`/reservations/?date=${date}`);
+    const data = await response.json();
+
+    let bookingsHTML = "";
+    let reserved_slots = [];
+
+    // Step 11: Loop over bookings
+    for (let item of data) {
+      console.log(item.fields);
+      reserved_slots.push(item.fields.reservation_slot);
+      bookingsHTML += `<p>${item.fields.first_name} - ${formatTime(item.fields.reservation_slot)}</p>`;
+    }
+
+    bookingsEl.innerHTML = bookingsHTML;
+
+    // Step 12: Build available time slots
+    let slot_options = '<option value="0" disabled selected>Select time</option>';
+    for (let i = 10; i < 20; i++) {
+      const label = formatTime(i);
+      if (reserved_slots.includes(i)) {
+        slot_options += `<option value="${i}" disabled>${label}</option>`;
+      } else {
+        slot_options += `<option value="${i}">${label}</option>`;
+      }
+    }
+    slotSelect.innerHTML = slot_options;
+  }
+
+  // Refresh bookings when date changes (Step 10)
+  dateInput.addEventListener("change", getBookings);
+
+  // Handle form submit (Step 8)
+  document.getElementById("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = {
+      first_name: document.getElementById("first_name").value,
+      reservation_date: dateInput.value,
+      reservation_slot: parseInt(slotSelect.value),
+    };
+
+    await fetch("/reservations/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    // Refresh booking list
+    getBookings();
+  });
+</script>
+{% endblock %}
